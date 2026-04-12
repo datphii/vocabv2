@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, RotateCcw, BarChart3, Settings } from "lucide-react";
+import { Home, RotateCcw, BarChart3, Settings, Mic } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/review", label: "Review", icon: RotateCcw },
+  { href: "/pronunciation", label: "Phát âm", icon: Mic },
   { href: "/progress", label: "Progress", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -27,7 +28,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center py-2 px-3 text-xs transition-colors ${
+              className={`flex flex-col items-center py-2 px-2 text-xs transition-colors ${
                 isActive
                   ? "text-blue-600"
                   : "text-gray-500 hover:text-gray-700"
