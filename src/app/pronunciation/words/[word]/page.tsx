@@ -1,10 +1,10 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import ChatInterface from "@/components/pronunciation/ChatInterface";
 import { usePronunciationStore } from "@/stores/pronunciationStore";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 interface Props {
   params: Promise<{ word: string }>;
@@ -13,8 +13,22 @@ interface Props {
 export default function WordPracticePage({ params }: Props) {
   const { word: encodedWord } = use(params);
   const word = decodeURIComponent(encodedWord);
+  const [mounted, setMounted] = useState(false);
 
   const { improvementWords, markWordPassedInList } = usePronunciationStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <Loader2 size={24} className="text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
   const wordData = improvementWords.find((w) => w.word === word);
 
   const handleWordPassed = (score: number) => {

@@ -1,11 +1,12 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import WordColorDisplay from "@/components/pronunciation/WordColorDisplay";
 import ChatInterface from "@/components/pronunciation/ChatInterface";
 import { usePronunciationStore } from "@/stores/pronunciationStore";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -14,7 +15,21 @@ interface Props {
 export default function SentencePracticePage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const { getSentence, updateWordScores } = usePronunciationStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <Loader2 size={24} className="text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
   const sentence = getSentence(id);
 
   if (!sentence) {

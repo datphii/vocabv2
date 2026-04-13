@@ -1,18 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import BottomNav from "@/components/layout/BottomNav";
 import WordColorDisplay from "@/components/pronunciation/WordColorDisplay";
 import { usePronunciationStore } from "@/stores/pronunciationStore";
-import { Plus, Trash2, AlertTriangle, ChevronRight, Mic, X } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, ChevronRight, Mic, X, Loader2 } from "lucide-react";
 
 export default function PronunciationHubPage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const { sentences, improvementWords, addSentence, removeSentence } = usePronunciationStore();
   const [showAdd, setShowAdd] = useState(false);
   const [newText, setNewText] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <Header title="Phát Âm" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 size={24} className="text-blue-500 animate-spin" />
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   const handleAdd = () => {
     const trimmed = newText.trim();
