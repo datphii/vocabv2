@@ -15,7 +15,6 @@ interface WordScore {
   note: string | null;
 }
 
-// Mock: assign realistic scores without API key
 function mockWordScores(targetText: string): Record<string, WordScore> {
   const hardSounds = ["th", "wh", "wr", "kn", "ph"];
   const result: Record<string, WordScore> = {};
@@ -49,51 +48,75 @@ function mockWordScores(targetText: string): Record<string, WordScore> {
   return result;
 }
 
-function buildMockMessage(
-  wordScores: Record<string, WordScore>,
-  transcript: string
-): string {
+function buildMockMessage(wordScores: Record<string, WordScore>, transcript: string): string {
   const good = Object.entries(wordScores).filter(([, v]) => v.score >= 80).map(([w]) => w);
   const ok = Object.entries(wordScores).filter(([, v]) => v.score >= 50 && v.score < 80).map(([w]) => w);
   const bad = Object.entries(wordScores).filter(([, v]) => v.score < 50).map(([w]) => w);
 
-  let msg = `[Demo — chưa có API key]\n\nMình nghe bạn đọc: "${transcript}"\n\n`;
+  let msg = `Mình nghe bạn đọc: "${transcript}"\n\n`;
   if (good.length) msg += `✅ Tốt: ${good.join(", ")}\n`;
   if (ok.length) msg += `🟡 Cần cải thiện: ${ok.join(", ")}\n`;
   if (bad.length) msg += `🔴 Cần luyện thêm: ${bad.join(", ")}\n`;
-  msg += "\nThêm OPENAI_API_KEY và ANTHROPIC_API_KEY vào .env.local để nhận phân tích thực!";
+  msg += "\n(Demo mode — thêm API keys vào .env.local để nhận phân tích chi tiết)";
   return msg;
 }
 
-const SENTENCE_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh chuyên giúp người Việt cải thiện phát âm và ngữ điệu.
+// Extract JSON from Claude's response, handling markdown code blocks and extra text
+function extractJSON(raw: string): unknown | null {
+  // Try direct parse first
+  try {
+    return JSON.parse(raw.trim());
+  } catch {
+    // ignore
+  }
 
-Khi nhận transcript giọng nói của học viên:
-1. Phân tích từng từ trong câu mục tiêu — chấm điểm 0–100
-2. Phản hồi thân thiện, cụ thể, bằng tiếng Việt
-3. Chú ý lỗi phổ biến của người Việt: âm /θ/ /ð/, phụ âm cuối bị nuốt, nhấn âm, ngữ điệu
+  // Try extracting from markdown code block: ```json ... ``` or ``` ... ```
+  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1].trim());
+    } catch {
+      // ignore
+    }
+  }
 
-Định dạng khi có voice input (LUÔN trả JSON hợp lệ):
-{"wordScores":{"word":{"score":number,"note":"string or null"}},"message":"string"}
+  // Try finding JSON object in the text
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      // ignore
+    }
+  }
 
-Định dạng khi hỏi text:
-{"message":"string"}
+  return null;
+}
 
-Không thêm bất kỳ text nào ngoài JSON.`;
+const SENTENCE_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh cho người Việt. Phong cách: thân thiện, cụ thể, khuyến khích.
 
-const WORD_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh chuyên giúp người Việt cải thiện phát âm và ngữ điệu.
+KHI NHẬN TRANSCRIPT GIỌNG NÓI:
+- So sánh transcript với câu mục tiêu
+- Chấm điểm mỗi từ 0–100 (80+ tốt, 50–79 khá, <50 cần luyện)
+- Chú ý lỗi người Việt hay gặp: /θ/ /ð/, phụ âm cuối, nhấn âm, nối âm
+- Trả lời ĐÚNG format JSON sau, KHÔNG wrap trong code block:
+{"wordScores":{"từ1":{"score":85,"note":null},"từ2":{"score":45,"note":"giải thích ngắn"}},"message":"Phản hồi chi tiết bằng tiếng Việt"}
 
-Học viên đang luyện phát âm một từ cụ thể. Khi nhận transcript:
-1. Đánh giá tổng thể từ đó — điểm 0–100
-2. Hướng dẫn cụ thể cách phát âm đúng (vị trí lưỡi, môi, hơi thở)
-3. Phản hồi bằng tiếng Việt, thân thiện và khuyến khích
+KHI NHẬN CÂU HỎI TEXT:
+- Trả lời tự nhiên bằng tiếng Việt, KHÔNG cần JSON
+- Giải thích cách phát âm, vị trí lưỡi/môi, ví dụ minh họa`;
 
-Định dạng khi có voice input (LUÔN trả JSON hợp lệ):
-{"score":number,"message":"string"}
+const WORD_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh cho người Việt. Phong cách: thân thiện, cụ thể, khuyến khích.
 
-Định dạng khi hỏi text:
-{"message":"string"}
+KHI NHẬN TRANSCRIPT GIỌNG NÓI:
+- Đánh giá phát âm từ mục tiêu — điểm 0–100
+- Hướng dẫn chi tiết: vị trí lưỡi, môi, hơi thở
+- Trả lời ĐÚNG format JSON sau, KHÔNG wrap trong code block:
+{"score":75,"message":"Phản hồi chi tiết bằng tiếng Việt"}
 
-Không thêm bất kỳ text nào ngoài JSON.`;
+KHI NHẬN CÂU HỎI TEXT:
+- Trả lời tự nhiên bằng tiếng Việt, KHÔNG cần JSON
+- Giải thích cách phát âm, vị trí lưỡi/môi, ví dụ minh họa`;
 
 export async function POST(request: NextRequest) {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -108,28 +131,30 @@ export async function POST(request: NextRequest) {
       const message =
         mode === "sentence"
           ? buildMockMessage(wordScores!, latestTranscript)
-          : `[Demo] Bạn đọc: "${latestTranscript}". Điểm: ${score}/100. Thêm API key để nhận phân tích chi tiết!`;
-      return NextResponse.json({ message, ...(wordScores ? { wordScores } : {}), ...(score !== undefined ? { overallScore: score } : {}) });
+          : `Bạn đọc: "${latestTranscript}"\nĐiểm: ${score}/100\n\n(Demo mode — thêm API keys để nhận phân tích chi tiết)`;
+      return NextResponse.json({
+        message,
+        ...(wordScores ? { wordScores } : {}),
+        ...(score !== undefined ? { overallScore: score } : {}),
+      });
     }
     return NextResponse.json({
-      message:
-        "[Demo mode] Đây là chế độ demo. Thêm ANTHROPIC_API_KEY vào .env.local để nhận phản hồi thực từ Claude!",
+      message: "Đây là chế độ demo. Thêm ANTHROPIC_API_KEY vào .env.local để nhận phản hồi từ Claude!",
     });
   }
 
-  // Build context prefix for system prompt
+  // Build system prompt with target context
   const contextLine =
     mode === "sentence"
-      ? `\nCâu mục tiêu: "${targetText}"${targetIPA ? ` | IPA: ${targetIPA}` : ""}`
-      : `\nTừ mục tiêu: "${targetText}"${targetIPA ? ` | IPA: ${targetIPA}` : ""}`;
+      ? `\n\nCâu mục tiêu: "${targetText}"${targetIPA ? ` (IPA: ${targetIPA})` : ""}`
+      : `\n\nTừ mục tiêu: "${targetText}"${targetIPA ? ` (IPA: ${targetIPA})` : ""}`;
 
-  const systemText =
-    (mode === "sentence" ? SENTENCE_SYSTEM_PROMPT : WORD_SYSTEM_PROMPT) + contextLine;
+  const systemText = (mode === "sentence" ? SENTENCE_SYSTEM_PROMPT : WORD_SYSTEM_PROMPT) + contextLine;
 
-  // Latest user turn
+  // Build the latest user message
   let latestContent = "";
   if (isVoiceInput && latestTranscript) {
-    latestContent = `[Ghi âm] Transcript: "${latestTranscript}"`;
+    latestContent = `[Ghi âm] Tôi đọc: "${latestTranscript}"`;
   } else if (userMessage) {
     latestContent = userMessage;
   }
@@ -145,32 +170,62 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       "x-api-key": ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "prompt-caching-2024-07-31",
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      system: [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }],
+      system: systemText,
       messages: apiMessages,
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    return NextResponse.json({ error: "Claude API error", detail: err }, { status: 500 });
+    console.error("Claude API error:", err);
+    return NextResponse.json(
+      { message: "Lỗi kết nối Claude API. Kiểm tra API key và thử lại." },
+      { status: 500 }
+    );
   }
 
   const data = await response.json();
   const raw: string = data.content?.[0]?.text ?? "";
 
-  try {
-    const parsed = JSON.parse(raw);
-    return NextResponse.json({
-      message: parsed.message ?? raw,
-      ...(parsed.wordScores ? { wordScores: parsed.wordScores } : {}),
-      ...(parsed.score !== undefined ? { overallScore: parsed.score } : {}),
-    });
-  } catch {
+  // If voice input, try to parse structured JSON response
+  if (isVoiceInput) {
+    const parsed = extractJSON(raw) as Record<string, unknown> | null;
+
+    if (parsed && typeof parsed === "object") {
+      // Sentence mode: expect { wordScores, message }
+      if (parsed.wordScores && parsed.message) {
+        return NextResponse.json({
+          message: parsed.message as string,
+          wordScores: parsed.wordScores,
+        });
+      }
+      // Word mode: expect { score, message }
+      if (parsed.score !== undefined && parsed.message) {
+        return NextResponse.json({
+          message: parsed.message as string,
+          overallScore: parsed.score as number,
+        });
+      }
+      // Has message field
+      if (parsed.message) {
+        return NextResponse.json({ message: parsed.message as string });
+      }
+    }
+
+    // JSON parse failed — Claude returned plain text, use it as message
     return NextResponse.json({ message: raw });
   }
+
+  // Text input: Claude returns plain text
+  // Try to extract message from JSON if Claude still returns JSON
+  const parsed = extractJSON(raw) as Record<string, unknown> | null;
+  if (parsed && typeof parsed === "object" && parsed.message) {
+    return NextResponse.json({ message: parsed.message as string });
+  }
+
+  return NextResponse.json({ message: raw });
 }

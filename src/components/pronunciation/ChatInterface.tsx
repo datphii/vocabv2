@@ -18,6 +18,56 @@ interface ChatInterfaceProps {
   onWordPassed?: (score: number) => void;
 }
 
+function ScoreBar({ score }: { score: number }) {
+  const color =
+    score >= 80 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+    </div>
+  );
+}
+
+function WordScoreCard({
+  wordScores,
+}: {
+  wordScores: Record<string, { score: number; note: string | null }>;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm max-w-[85%]">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        Điểm từng từ
+      </p>
+      <div className="space-y-2">
+        {Object.entries(wordScores).map(([word, { score, note }]) => (
+          <div key={word}>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm font-bold w-8 text-right ${
+                  score >= 80
+                    ? "text-green-600"
+                    : score >= 50
+                    ? "text-amber-600"
+                    : "text-red-600"
+                }`}
+              >
+                {score}
+              </span>
+              <ScoreBar score={score} />
+              <span className="text-sm font-medium text-gray-800">{word}</span>
+            </div>
+            {note && (
+              <p className="text-xs text-gray-500 ml-[72px] mt-0.5 leading-snug">
+                {note}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ChatInterface({
   targetText,
   targetIPA,
@@ -42,10 +92,14 @@ export default function ChatInterface({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const callChatAPI = async (isVoiceInput: boolean, latestTranscript?: string, userMessage?: string) => {
+  const callChatAPI = async (
+    isVoiceInput: boolean,
+    latestTranscript?: string,
+    userMessage?: string
+  ) => {
     setIsLoading(true);
 
-    // Only send non-init messages to API
+    // Only send text content to API (no wordScores metadata)
     const apiMessages = messages
       .filter((m) => m.id !== "init")
       .map((m) => ({ role: m.role, content: m.content }));
@@ -70,7 +124,7 @@ export default function ChatInterface({
       const assistantMsg: ChatMessage = {
         id: Date.now().toString(),
         role: "assistant",
-        content: data.message as string,
+        content: (data.message as string) || "Không nhận được phản hồi. Thử lại nhé.",
         wordScores: data.wordScores,
         timestamp: new Date().toISOString(),
       };
@@ -78,11 +132,7 @@ export default function ChatInterface({
       setMessages((prev) => [...prev, assistantMsg]);
 
       if (isVoiceInput && data.wordScores && onScoreUpdate) {
-        onScoreUpdate(
-          data.wordScores as Record<string, { score: number; note: string | null }>,
-          latestTranscript!,
-          data.message as string
-        );
+        onScoreUpdate(data.wordScores, latestTranscript!, data.message as string);
       }
       if (mode === "word" && data.overallScore !== undefined && onWordPassed) {
         onWordPassed(data.overallScore as number);
@@ -135,48 +185,36 @@ export default function ChatInterface({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
-                  : "bg-gray-100 text-gray-800 rounded-bl-sm"
-              }`}
-            >
-              <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-
-              {/* Word scores breakdown */}
-              {msg.wordScores && Object.keys(msg.wordScores).length > 0 && (
-                <div className="mt-2 pt-2 border-t border-white/20 space-y-1">
-                  {Object.entries(msg.wordScores).map(([word, { score, note }]) => (
-                    <div key={word} className="flex items-start gap-2 text-xs">
-                      <span
-                        className={`font-semibold shrink-0 ${
-                          score >= 80
-                            ? "text-green-300"
-                            : score >= 50
-                            ? "text-amber-300"
-                            : "text-red-300"
-                        }`}
-                      >
-                        {word} {score}%
-                      </span>
-                      {note && <span className="text-white/70 leading-snug">{note}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div key={msg.id} className="space-y-2">
+            {/* Chat bubble */}
+            <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-br-sm"
+                    : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
             </div>
+
+            {/* Word scores as separate card below the message */}
+            {msg.wordScores && Object.keys(msg.wordScores).length > 0 && (
+              <div className="flex justify-start">
+                <WordScoreCard wordScores={msg.wordScores} />
+              </div>
+            )}
           </div>
         ))}
 
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-              <Loader2 size={16} className="text-gray-400 animate-spin" />
+              <div className="flex items-center gap-2">
+                <Loader2 size={14} className="text-gray-400 animate-spin" />
+                <span className="text-xs text-gray-400">Đang phân tích...</span>
+              </div>
             </div>
           </div>
         )}
