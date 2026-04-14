@@ -88,6 +88,7 @@ export default function ChatInterface({
   ]);
   const [textInput, setTextInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,6 +122,8 @@ export default function ChatInterface({
       });
 
       const data = await res.json();
+
+      if (data.isMock) setIsDemoMode(true);
 
       const assistantMsg: ChatMessage = {
         id: Date.now().toString(),
@@ -222,6 +225,16 @@ export default function ChatInterface({
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Demo mode banner */}
+      {isDemoMode && (
+        <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+          <span className="text-amber-500 text-xs">⚡</span>
+          <p className="text-xs text-amber-700 flex-1">
+            Chế độ demo — thêm <code className="font-mono bg-amber-100 px-1 rounded">ANTHROPIC_API_KEY</code> vào <code className="font-mono bg-amber-100 px-1 rounded">.env.local</code> để nhận phân tích từ Claude AI
+          </p>
+        </div>
+      )}
 
       {/* Input bar */}
       <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-3 bg-white">
