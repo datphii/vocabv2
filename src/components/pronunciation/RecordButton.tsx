@@ -61,8 +61,8 @@ export default function RecordButton({ onTranscriptReady, disabled }: RecordButt
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gray-100">
-        <Loader2 size={22} className="text-blue-500 animate-spin" />
+      <div className="flex items-center justify-center w-14 h-14 rounded-full bg-violet-50 border border-violet-100">
+        <Loader2 size={22} className="text-violet-500 animate-spin" />
       </div>
     );
   }
@@ -72,14 +72,14 @@ export default function RecordButton({ onTranscriptReady, disabled }: RecordButt
       onClick={isRecording ? stopRecording : startRecording}
       disabled={disabled}
       aria-label={isRecording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
-      className={`relative flex items-center justify-center w-14 h-14 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`relative flex items-center justify-center w-14 h-14 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${
         isRecording
-          ? "bg-red-500 shadow-lg shadow-red-200"
-          : "bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-lg shadow-blue-200"
+          ? "bg-gradient-to-br from-rose-500 to-pink-500 shadow-lg shadow-rose-200"
+          : "bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-200"
       }`}
     >
       {isRecording && (
-        <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-40" />
+        <span className="absolute inset-0 rounded-full bg-rose-400 animate-ping opacity-40" />
       )}
       {isRecording ? (
         <Square size={20} className="text-white relative z-10 fill-white" />

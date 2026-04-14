@@ -3,9 +3,9 @@
 import { PracticeSentence, WordStatus, cleanWord } from "@/stores/pronunciationStore";
 
 const statusClass: Record<WordStatus, string> = {
-  green: "text-green-700 bg-green-100 rounded px-0.5",
-  yellow: "text-amber-700 bg-amber-100 rounded px-0.5",
-  red: "text-red-700 bg-red-100 rounded px-0.5",
+  green: "text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1",
+  yellow: "text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-1",
+  red: "text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-1",
   untested: "text-gray-800",
 };
 
@@ -15,7 +15,6 @@ interface WordColorDisplayProps {
 }
 
 export default function WordColorDisplay({ sentence, className = "" }: WordColorDisplayProps) {
-  // Split preserving spaces and punctuation attached to words
   const tokens = sentence.text.split(/(\s+)/);
 
   return (
