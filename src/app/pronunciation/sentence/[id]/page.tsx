@@ -18,14 +18,12 @@ export default function SentencePracticePage({ params }: Props) {
   const [mounted, setMounted] = useState(false);
   const { getSentence, updateWordScores } = usePronunciationStore();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   if (!mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <Loader2 size={24} className="text-blue-500 animate-spin" />
+        <Loader2 size={24} className="text-violet-500 animate-spin" />
       </div>
     );
   }
@@ -39,7 +37,7 @@ export default function SentencePracticePage({ params }: Props) {
           <p className="text-gray-500 mb-4">Không tìm thấy câu luyện tập</p>
           <button
             onClick={() => router.push("/pronunciation")}
-            className="text-blue-600 text-sm font-medium"
+            className="text-violet-600 text-sm font-semibold"
           >
             ← Quay lại
           </button>
@@ -61,35 +59,37 @@ export default function SentencePracticePage({ params }: Props) {
   const initialMessage =
     sessionCount === 0
       ? `Chào bạn! Hôm nay mình luyện câu:\n\n"${sentence.text}"\n\nNhấn 🎤 và đọc câu đó khi sẵn sàng. Bạn cũng có thể hỏi về cách phát âm bất kỳ từ nào trước nhé!`
-      : `Chào mừng trở lại! Lần luyện thứ ${sessionCount + 1} cho câu:\n\n"${sentence.text}"\n\nNhấn 🎤 khi sẵn sàng!`;
+      : `Chào mừng trở lại! Lần luyện thứ ${sessionCount + 1}:\n\n"${sentence.text}"\n\nNhấn 🎤 khi sẵn sàng!`;
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <Header title={`Luyện câu — phiên #${sessionCount + 1}`} showBack />
+      <Header
+        title={`Phiên luyện #${sessionCount + 1}`}
+        showBack
+      />
 
-      {/* Sentence + legend */}
-      <div className="border-b border-gray-100 px-4 py-3 bg-gray-50 shrink-0">
-        <p className="text-xs text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+      {/* Sentence display */}
+      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border-b border-violet-100 px-4 py-4 shrink-0">
+        <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest mb-2">
           Câu luyện tập
         </p>
         <WordColorDisplay sentence={sentence} className="text-base" />
-        <div className="flex gap-4 mt-2 text-xs text-gray-400">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-            Đúng ≥80%
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-            Khá 50–79%
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-            Cần luyện &lt;50%
-          </span>
+
+        {/* Legend */}
+        <div className="flex gap-3 mt-3">
+          {[
+            { color: "bg-emerald-400", label: "Đúng ≥80%" },
+            { color: "bg-amber-400", label: "Khá 50–79%" },
+            { color: "bg-rose-400", label: "Cần luyện <50%" },
+          ].map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1 text-xs text-gray-500">
+              <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Chat fills remaining height */}
       <div className="flex-1 overflow-hidden">
         <ChatInterface
           targetText={sentence.text}

@@ -20,7 +20,7 @@ interface ChatInterfaceProps {
 
 function ScoreBar({ score }: { score: number }) {
   const color =
-    score >= 80 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+    score >= 80 ? "bg-emerald-500" : score >= 50 ? "bg-amber-500" : "bg-rose-500";
   return (
     <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
@@ -34,21 +34,23 @@ function WordScoreCard({
   wordScores: Record<string, { score: number; note: string | null }>;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm max-w-[85%]">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        Điểm từng từ
-      </p>
-      <div className="space-y-2">
+    <div className="bg-white border border-violet-100 rounded-2xl overflow-hidden shadow-sm max-w-[85%]">
+      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 px-3 py-2 border-b border-violet-100">
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide">
+          Điểm từng từ
+        </p>
+      </div>
+      <div className="p-3 space-y-2">
         {Object.entries(wordScores).map(([word, { score, note }]) => (
           <div key={word}>
             <div className="flex items-center gap-2">
               <span
                 className={`text-sm font-bold w-8 text-right ${
                   score >= 80
-                    ? "text-green-600"
+                    ? "text-emerald-600"
                     : score >= 50
                     ? "text-amber-600"
-                    : "text-red-600"
+                    : "text-rose-600"
                 }`}
               >
                 {score}
@@ -99,7 +101,6 @@ export default function ChatInterface({
   ) => {
     setIsLoading(true);
 
-    // Only send text content to API (no wordScores metadata)
     const apiMessages = messages
       .filter((m) => m.id !== "init")
       .map((m) => ({ role: m.role, content: m.content }));
@@ -181,7 +182,7 @@ export default function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.map((msg) => (
@@ -191,7 +192,7 @@ export default function ChatInterface({
               <div
                 className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-sm"
+                    ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-br-sm shadow-sm shadow-violet-200"
                     : "bg-gray-100 text-gray-800 rounded-bl-sm"
                 }`}
               >
@@ -212,7 +213,7 @@ export default function ChatInterface({
           <div className="flex justify-start">
             <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
               <div className="flex items-center gap-2">
-                <Loader2 size={14} className="text-gray-400 animate-spin" />
+                <Loader2 size={14} className="text-violet-400 animate-spin" />
                 <span className="text-xs text-gray-400">Đang phân tích...</span>
               </div>
             </div>
@@ -233,12 +234,12 @@ export default function ChatInterface({
             onKeyDown={(e) => e.key === "Enter" && handleTextSend()}
             placeholder="Hỏi về phát âm..."
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 bg-gray-50"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50 bg-gray-50"
           />
           <button
             onClick={handleTextSend}
             disabled={!textInput.trim() || isLoading}
-            className="p-2.5 rounded-xl bg-blue-600 text-white disabled:opacity-40 active:scale-95 transition-transform"
+            className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white disabled:opacity-40 active:scale-95 transition-transform shadow-sm shadow-violet-200"
           >
             <Send size={16} />
           </button>
