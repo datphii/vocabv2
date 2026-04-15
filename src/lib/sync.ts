@@ -1,10 +1,13 @@
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 
 export interface CloudData {
   pronunciation_data: unknown;
 }
 
 export async function loadFromCloud(userId: string): Promise<CloudData | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
   const { data, error } = await supabase
     .from("user_sync")
     .select("pronunciation_data")
@@ -19,6 +22,9 @@ export async function loadFromCloud(userId: string): Promise<CloudData | null> {
 }
 
 export async function saveToCloud(userId: string, pronunciationData: unknown): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+
   const { error } = await supabase
     .from("user_sync")
     .upsert(
