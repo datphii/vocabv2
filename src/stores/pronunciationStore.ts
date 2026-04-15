@@ -79,6 +79,7 @@ interface PronunciationState {
   ) => void;
 
   markWordPassedInList: (word: string) => void;
+  setFromCloud: (data: { sentences: PracticeSentence[]; improvementWords: ImprovementWord[] }) => void;
 }
 
 export const usePronunciationStore = create<PronunciationState>()(
@@ -214,6 +215,10 @@ export const usePronunciationStore = create<PronunciationState>()(
             improvementWords: updated.filter((w) => !isQualifiedForRemoval(w)),
           };
         });
+      },
+
+      setFromCloud: (data) => {
+        set({ sentences: data.sentences, improvementWords: data.improvementWords });
       },
     }),
     { name: "mechwords-pronunciation" }
