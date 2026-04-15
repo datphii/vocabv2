@@ -126,30 +126,27 @@ function buildMockMessage(wordScores: Record<string, WordScore>, transcript: str
   return msg;
 }
 
-// Extract JSON from Claude's response, handling markdown code blocks and extra text
+// Extract JSON from Claude's response — handles plain JSON, ```json blocks, and embedded objects
 function extractJSON(raw: string): unknown | null {
-  try {
-    return JSON.parse(raw.trim());
-  } catch {
-    // ignore
+  const text = raw.trim();
+
+  // 1. Direct parse
+  try { return JSON.parse(text); } catch { /* continue */ }
+
+  // 2. Strip code block markers (```json ... ``` or ``` ... ```)
+  const stripped = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim();
+  if (stripped !== text) {
+    try { return JSON.parse(stripped); } catch { /* continue */ }
   }
 
-  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim());
-    } catch {
-      // ignore
-    }
-  }
-
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch {
-      // ignore
-    }
+  // 3. Find outermost JSON object by first { and last }
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch { /* continue */ }
   }
 
   return null;
@@ -159,44 +156,39 @@ const SENTENCE_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh cho ngư
 
 KHI NHẬN TRANSCRIPT GIỌNG NÓI:
 So sánh transcript với câu mục tiêu, chấm điểm mỗi từ 0–100.
-
 Tiêu chí: 80+ tốt, 50–79 khá, <50 cần luyện.
 
-Lỗi phổ biến của người Việt cần chú ý:
-- Âm /θ/ và /ð/ (th): hay đọc thành /t/ hoặc /d/
+Lỗi phổ biến của người Việt:
+- Âm /θ/ /ð/ (th): hay đọc thành /t/ hoặc /d/
 - Bỏ phụ âm cuối: /t/ /d/ /k/ /s/ /z/ /ŋ/
-- Nhấn âm sai (stress) ở từ nhiều âm tiết
+- Nhấn âm sai ở từ nhiều âm tiết
 - Nguyên âm dài/ngắn: /iː/ vs /ɪ/, /uː/ vs /ʊ/
-- Âm /v/ vs /b/, /r/ cuộn lưỡi thay vì uốn lưỡi
 
-Trả lời ĐÚNG format JSON sau, KHÔNG wrap trong code block:
-{"wordScores":{"word1":{"score":85,"note":null},"word2":{"score":45,"note":"Mẹo cụ thể: vị trí lưỡi/môi, IPA, so sánh với tiếng Việt"}},"message":"Nhận xét tổng thể + 1–2 mẹo luyện tập cụ thể nhất cho phiên này"}
+QUAN TRỌNG: Chỉ trả về JSON thuần túy, KHÔNG dùng markdown, KHÔNG có \`\`\`json, KHÔNG có bất kỳ text nào ngoài JSON.
+Ví dụ đúng: {"wordScores":{"hello":{"score":80,"note":null}},"message":"Tốt lắm!"}
+Ví dụ SAI: \`\`\`json\n{"wordScores":...}\`\`\`
 
-Trong "note" của từ cần cải thiện: ghi ngắn gọn cách phát âm đúng (vị trí lưỡi, môi, hơi thở).
-Trong "message": động viên + gợi ý 1–2 bài tập cụ thể (ví dụ: đọc chậm từng âm tiết, tập riêng âm /θ/ trước gương).
+Format bắt buộc:
+{"wordScores":{"word1":{"score":85,"note":null},"word2":{"score":45,"note":"Mẹo: vị trí lưỡi/môi, IPA, so sánh tiếng Việt"}},"message":"Nhận xét + 1–2 bài tập cụ thể"}
 
 KHI NHẬN CÂU HỎI TEXT:
 Trả lời tự nhiên bằng tiếng Việt, KHÔNG cần JSON.
-Giải thích chi tiết: IPA, vị trí lưỡi/môi, so sánh với âm tiếng Việt gần nhất, ví dụ từ khác có cùng âm.`;
+Giải thích: IPA, vị trí lưỡi/môi, so sánh âm tiếng Việt gần nhất, ví dụ từ khác cùng âm.`;
 
 const WORD_SYSTEM_PROMPT = `Bạn là gia sư phát âm tiếng Anh cho người Việt Nam. Phong cách: thân thiện, cụ thể, khuyến khích.
 
 KHI NHẬN TRANSCRIPT GIỌNG NÓI:
-Đánh giá phát âm từ mục tiêu — điểm 0–100.
+Đánh giá phát âm từ mục tiêu — điểm 0–100. Phân tích: âm đúng/sai (IPA), vị trí lưỡi/môi, so sánh âm tiếng Việt gần nhất, bài tập minimal pairs.
 
-Trong phản hồi phải có:
-1. Điểm số và nhận xét tổng thể
-2. Phân tích âm nào đúng, âm nào sai (dùng IPA)
-3. Hướng dẫn CỤ THỂ: vị trí lưỡi đặt đâu, môi hình gì, hơi thở ra sao
-4. So sánh với âm tiếng Việt gần nhất để dễ hình dung
-5. Bài tập nhỏ: minimal pairs hoặc câu ví dụ để luyện
+QUAN TRỌNG: Chỉ trả về JSON thuần túy, KHÔNG dùng markdown, KHÔNG có \`\`\`json, KHÔNG có text nào ngoài JSON.
+Ví dụ đúng: {"score":75,"message":"Bạn đọc khá tốt..."}
+Ví dụ SAI: \`\`\`json\n{"score":75,...}\`\`\`
 
-Trả lời ĐÚNG format JSON sau, KHÔNG wrap trong code block:
-{"score":75,"message":"Phản hồi chi tiết bằng tiếng Việt với đủ 5 điểm trên"}
+Format bắt buộc: {"score":75,"message":"Phản hồi chi tiết tiếng Việt"}
 
 KHI NHẬN CÂU HỎI TEXT:
 Trả lời tự nhiên bằng tiếng Việt, KHÔNG cần JSON.
-Giải thích chi tiết: IPA, vị trí lưỡi/môi, so sánh âm tiếng Việt, ví dụ từ, bài tập luyện.`;
+Giải thích: IPA, vị trí lưỡi/môi, so sánh âm tiếng Việt, ví dụ từ, bài tập luyện.`;
 
 export async function POST(request: NextRequest) {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
