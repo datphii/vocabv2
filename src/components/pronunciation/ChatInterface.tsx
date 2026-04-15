@@ -28,6 +28,32 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+function RhythmCard({ rhythmNote }: { rhythmNote: string }) {
+  const parts = rhythmNote.split("|");
+  return (
+    <div className="bg-white border border-indigo-100 rounded-2xl overflow-hidden shadow-sm max-w-[85%]">
+      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2 border-b border-indigo-100">
+        <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">
+          Nhịp ngắt nghỉ
+        </p>
+      </div>
+      <div className="px-3 py-2.5 flex flex-wrap items-center gap-x-1 gap-y-1">
+        {parts.map((part, i) => (
+          <span key={i} className="flex items-center gap-1">
+            <span className="text-sm text-gray-700 leading-relaxed">{part.trim()}</span>
+            {i < parts.length - 1 && (
+              <span className="text-indigo-400 font-bold text-base mx-0.5">|</span>
+            )}
+          </span>
+        ))}
+      </div>
+      <p className="px-3 pb-2.5 text-xs text-gray-400">
+        Dừng nhẹ tại mỗi dấu | để câu tự nhiên hơn
+      </p>
+    </div>
+  );
+}
+
 function WordScoreCard({
   wordScores,
 }: {
@@ -130,6 +156,7 @@ export default function ChatInterface({
         role: "assistant",
         content: (data.message as string) || "Không nhận được phản hồi. Thử lại nhé.",
         wordScores: data.wordScores,
+        rhythmNote: data.rhythmNote as string | undefined,
         timestamp: new Date().toISOString(),
       };
 
@@ -203,10 +230,17 @@ export default function ChatInterface({
               </div>
             </div>
 
-            {/* Word scores as separate card below the message */}
+            {/* Word scores card */}
             {msg.wordScores && Object.keys(msg.wordScores).length > 0 && (
               <div className="flex justify-start">
                 <WordScoreCard wordScores={msg.wordScores} />
+              </div>
+            )}
+
+            {/* Rhythm / pause guide card */}
+            {msg.rhythmNote && (
+              <div className="flex justify-start">
+                <RhythmCard rhythmNote={msg.rhythmNote} />
               </div>
             )}
           </div>

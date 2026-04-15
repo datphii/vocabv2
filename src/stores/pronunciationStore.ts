@@ -44,6 +44,7 @@ export interface ChatMessage {
   isVoice?: boolean;
   transcript?: string;
   wordScores?: Record<string, { score: number; note: string | null }>;
+  rhythmNote?: string;
   timestamp: string;
 }
 

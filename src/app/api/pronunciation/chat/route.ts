@@ -126,27 +126,62 @@ function buildMockMessage(wordScores: Record<string, WordScore>, transcript: str
   return msg;
 }
 
-// Extract JSON from Claude's response — handles plain JSON, ```json blocks, and embedded objects
+// Fix unescaped newlines/tabs inside JSON string values (common Claude output issue)
+function fixMalformedJSON(text: string): string {
+  let inString = false;
+  let escaped = false;
+  let result = "";
+
+  for (const char of text) {
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+    if (char === "\\" && inString) {
+      escaped = true;
+      result += char;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    if (inString) {
+      if (char === "\n") { result += "\\n"; continue; }
+      if (char === "\r") { result += "\\r"; continue; }
+      if (char === "\t") { result += "\\t"; continue; }
+    }
+    result += char;
+  }
+  return result;
+}
+
+// Extract JSON from Claude's response — handles code blocks, embedded objects, malformed newlines
 function extractJSON(raw: string): unknown | null {
-  const text = raw.trim();
+  const attempts: string[] = [];
 
-  // 1. Direct parse
-  try { return JSON.parse(text); } catch { /* continue */ }
+  // 1. Raw text
+  attempts.push(raw.trim());
 
-  // 2. Strip code block markers (```json ... ``` or ``` ... ```)
-  const stripped = text
+  // 2. Strip ```json ... ``` code block markers
+  const stripped = raw.trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/, "")
     .trim();
-  if (stripped !== text) {
-    try { return JSON.parse(stripped); } catch { /* continue */ }
-  }
+  if (stripped !== raw.trim()) attempts.push(stripped);
 
-  // 3. Find outermost JSON object by first { and last }
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start !== -1 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)); } catch { /* continue */ }
+  // 3. Slice from first { to last }
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start !== -1 && end > start) attempts.push(raw.slice(start, end + 1));
+
+  for (const candidate of attempts) {
+    // Try as-is first, then with newline fix
+    for (const text of [candidate, fixMalformedJSON(candidate)]) {
+      try { return JSON.parse(text); } catch { /* continue */ }
+    }
   }
 
   return null;
@@ -164,12 +199,15 @@ Lỗi phổ biến của người Việt:
 - Nhấn âm sai ở từ nhiều âm tiết
 - Nguyên âm dài/ngắn: /iː/ vs /ɪ/, /uː/ vs /ʊ/
 
-QUAN TRỌNG: Chỉ trả về JSON thuần túy, KHÔNG dùng markdown, KHÔNG có \`\`\`json, KHÔNG có bất kỳ text nào ngoài JSON.
-Ví dụ đúng: {"wordScores":{"hello":{"score":80,"note":null}},"message":"Tốt lắm!"}
-Ví dụ SAI: \`\`\`json\n{"wordScores":...}\`\`\`
+QUAN TRỌNG — OUTPUT RULES:
+1. Chỉ trả về JSON thuần túy trên 1 dòng, KHÔNG dùng markdown, KHÔNG có \`\`\`json
+2. Tất cả string value phải nằm trên 1 dòng, KHÔNG có newline thật bên trong string
+3. Dùng \\n (escaped) nếu muốn xuống dòng trong message
 
-Format bắt buộc:
-{"wordScores":{"word1":{"score":85,"note":null},"word2":{"score":45,"note":"Mẹo: vị trí lưỡi/môi, IPA, so sánh tiếng Việt"}},"message":"Nhận xét + 1–2 bài tập cụ thể"}
+Format bắt buộc (1 dòng duy nhất):
+{"wordScores":{"word1":{"score":85,"note":null},"word2":{"score":45,"note":"Mẹo ngắn gọn"}},"rhythmNote":"Câu gốc với | đánh dấu chỗ ngắt nghỉ tự nhiên","message":"Nhận xét + mẹo luyện tập"}
+
+Trong rhythmNote: viết lại câu mục tiêu, chèn dấu | vào chỗ ngắt nghỉ tự nhiên khi đọc to (breath groups, clause boundaries). Ví dụ: "Welcome to Clarke National Bank. | How can I help you today? | I saw your advertisement | in the window | that anyone who opens a bank account here | will receive a bonus for signing up | so I'd like to open up an account"
 
 KHI NHẬN CÂU HỎI TEXT:
 Trả lời tự nhiên bằng tiếng Việt, KHÔNG cần JSON.
@@ -275,6 +313,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           message: parsed.message as string,
           wordScores: parsed.wordScores,
+          ...(parsed.rhythmNote ? { rhythmNote: parsed.rhythmNote } : {}),
         });
       }
       if (parsed.score !== undefined && parsed.message) {
@@ -288,7 +327,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ message: raw });
+    // JSON parse failed — log for debugging and return raw text
+    console.error("Failed to parse Claude JSON response:", raw.slice(0, 300));
+    return NextResponse.json({ message: "Không thể phân tích phản hồi. Thử đọc lại nhé!" });
   }
 
   // Text input: Claude returns plain text
