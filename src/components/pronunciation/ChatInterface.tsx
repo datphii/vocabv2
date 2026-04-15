@@ -28,43 +28,111 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
+function RhythmCard({ rhythmNote }: { rhythmNote: string }) {
+  const parts = rhythmNote.split("|");
+  return (
+    <div className="bg-white border border-indigo-100 rounded-2xl overflow-hidden shadow-sm max-w-[90%]">
+      <div className="bg-gradient-to-r from-indigo-50 to-violet-50 px-3 py-2 border-b border-indigo-100">
+        <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">
+          Nhịp ngắt nghỉ
+        </p>
+      </div>
+      <div className="px-3 py-2.5 flex flex-wrap items-baseline gap-x-0.5 gap-y-1">
+        {parts.map((part, i) => (
+          <span key={i} className="flex items-baseline gap-0.5">
+            <span className="text-sm text-gray-700 leading-relaxed">{part.trim()}</span>
+            {i < parts.length - 1 && (
+              <span className="text-indigo-400 font-bold text-base px-0.5">|</span>
+            )}
+          </span>
+        ))}
+      </div>
+      <p className="px-3 pb-2 text-xs text-gray-400">
+        Dừng nhẹ tại dấu | để câu nghe tự nhiên hơn
+      </p>
+    </div>
+  );
+}
+
 function WordScoreCard({
   wordScores,
 }: {
   wordScores: Record<string, { score: number; note: string | null }>;
 }) {
+  const entries = Object.entries(wordScores);
+  const avg = Math.round(entries.reduce((s, [, v]) => s + v.score, 0) / entries.length);
+  const good = entries.filter(([, v]) => v.score >= 80);
+  const ok = entries.filter(([, v]) => v.score >= 50 && v.score < 80);
+  const bad = entries.filter(([, v]) => v.score < 50);
+
+  const avgColor = avg >= 80 ? "text-emerald-600" : avg >= 50 ? "text-amber-600" : "text-rose-600";
+  const avgBg = avg >= 80 ? "bg-emerald-50 border-emerald-200" : avg >= 50 ? "bg-amber-50 border-amber-200" : "bg-rose-50 border-rose-200";
+
   return (
-    <div className="bg-white border border-violet-100 rounded-2xl overflow-hidden shadow-sm max-w-[85%]">
-      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 px-3 py-2 border-b border-violet-100">
-        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide">
-          Điểm từng từ
-        </p>
+    <div className="bg-white border border-violet-100 rounded-2xl overflow-hidden shadow-sm max-w-[90%]">
+      {/* Header with overall score */}
+      <div className="bg-gradient-to-r from-violet-50 to-indigo-50 px-3 py-2 border-b border-violet-100 flex items-center justify-between">
+        <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide">Kết quả phát âm</p>
+        <span className={`text-sm font-bold px-2 py-0.5 rounded-full border ${avgBg} ${avgColor}`}>
+          {avg}/100
+        </span>
       </div>
-      <div className="p-3 space-y-2">
-        {Object.entries(wordScores).map(([word, { score, note }]) => (
-          <div key={word}>
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-sm font-bold w-8 text-right ${
-                  score >= 80
-                    ? "text-emerald-600"
-                    : score >= 50
-                    ? "text-amber-600"
-                    : "text-rose-600"
-                }`}
-              >
-                {score}
-              </span>
-              <ScoreBar score={score} />
-              <span className="text-sm font-medium text-gray-800">{word}</span>
+
+      <div className="p-3 space-y-2.5">
+        {/* Good words — compact pill list */}
+        {good.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 mb-1.5">✅ Tốt ({good.length} từ)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {good.map(([word]) => (
+                <span key={word} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                  {word}
+                </span>
+              ))}
             </div>
-            {note && (
-              <p className="text-xs text-gray-500 ml-[72px] mt-0.5 leading-snug">
-                {note}
-              </p>
-            )}
           </div>
-        ))}
+        )}
+
+        {/* Words needing improvement — with score bar + note */}
+        {ok.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-amber-600 mb-1.5">🟡 Cần cải thiện ({ok.length} từ)</p>
+            <div className="space-y-1.5">
+              {ok.map(([word, { score, note }]) => (
+                <div key={word} className="bg-amber-50 rounded-xl px-2.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-600 w-7 text-right shrink-0">{score}</span>
+                    <div className="w-14 h-1.5 bg-amber-100 rounded-full overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-amber-400" style={{ width: `${score}%` }} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-800">{word}</span>
+                  </div>
+                  {note && <p className="text-xs text-amber-700 mt-0.5 ml-[52px] leading-snug">{note}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {bad.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-rose-600 mb-1.5">🔴 Cần luyện thêm ({bad.length} từ)</p>
+            <div className="space-y-1.5">
+              {bad.map(([word, { score, note }]) => (
+                <div key={word} className="bg-rose-50 rounded-xl px-2.5 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-rose-600 w-7 text-right shrink-0">{score}</span>
+                    <div className="w-14 h-1.5 bg-rose-100 rounded-full overflow-hidden shrink-0">
+                      <div className="h-full rounded-full bg-rose-400" style={{ width: `${score}%` }} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-800">{word}</span>
+                  </div>
+                  {note && <p className="text-xs text-rose-700 mt-0.5 ml-[52px] leading-snug">{note}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -88,6 +156,7 @@ export default function ChatInterface({
   ]);
   const [textInput, setTextInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -122,11 +191,14 @@ export default function ChatInterface({
 
       const data = await res.json();
 
+      if (data.isMock) setIsDemoMode(true);
+
       const assistantMsg: ChatMessage = {
         id: Date.now().toString(),
         role: "assistant",
         content: (data.message as string) || "Không nhận được phản hồi. Thử lại nhé.",
         wordScores: data.wordScores,
+        rhythmNote: data.rhythmNote as string | undefined,
         timestamp: new Date().toISOString(),
       };
 
@@ -200,10 +272,17 @@ export default function ChatInterface({
               </div>
             </div>
 
-            {/* Word scores as separate card below the message */}
+            {/* Word scores card */}
             {msg.wordScores && Object.keys(msg.wordScores).length > 0 && (
               <div className="flex justify-start">
                 <WordScoreCard wordScores={msg.wordScores} />
+              </div>
+            )}
+
+            {/* Rhythm / pause guide card */}
+            {msg.rhythmNote && (
+              <div className="flex justify-start">
+                <RhythmCard rhythmNote={msg.rhythmNote} />
               </div>
             )}
           </div>
@@ -222,6 +301,16 @@ export default function ChatInterface({
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Demo mode banner */}
+      {isDemoMode && (
+        <div className="mx-4 mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+          <span className="text-amber-500 text-xs">⚡</span>
+          <p className="text-xs text-amber-700 flex-1">
+            Chế độ demo — thêm <code className="font-mono bg-amber-100 px-1 rounded">ANTHROPIC_API_KEY</code> vào <code className="font-mono bg-amber-100 px-1 rounded">.env.local</code> để nhận phân tích từ Claude AI
+          </p>
+        </div>
+      )}
 
       {/* Input bar */}
       <div className="border-t border-gray-100 px-4 py-3 flex items-center gap-3 bg-white">

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
+import SyncProvider from "@/components/layout/SyncProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ServiceWorkerRegister />
+        <SyncProvider />
         {children}
       </body>
     </html>

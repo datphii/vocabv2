@@ -44,6 +44,7 @@ export interface ChatMessage {
   isVoice?: boolean;
   transcript?: string;
   wordScores?: Record<string, { score: number; note: string | null }>;
+  rhythmNote?: string;
   timestamp: string;
 }
 
@@ -78,6 +79,7 @@ interface PronunciationState {
   ) => void;
 
   markWordPassedInList: (word: string) => void;
+  setFromCloud: (data: { sentences: PracticeSentence[]; improvementWords: ImprovementWord[] }) => void;
 }
 
 export const usePronunciationStore = create<PronunciationState>()(
@@ -213,6 +215,10 @@ export const usePronunciationStore = create<PronunciationState>()(
             improvementWords: updated.filter((w) => !isQualifiedForRemoval(w)),
           };
         });
+      },
+
+      setFromCloud: (data) => {
+        set({ sentences: data.sentences, improvementWords: data.improvementWords });
       },
     }),
     { name: "mechwords-pronunciation" }
